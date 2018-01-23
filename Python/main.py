@@ -11,22 +11,24 @@ def ramp(freqs, highest, lowest):
     print "\n\n==========================\n Generating ramp function \n==========================\n"
     
     increment = float(highest - lowest)/freqs
+    ramp_l = [0]*freqs
+    ramp_r = [0]*freqs
     for i in range(0,freqs):
         magn = increment * i
-        ramp_l = lowest  + magn
-        ramp_r = highest - magn
-
+        ramp_l[i] = lowest  + magn
+        ramp_r[i] = highest - magn
+        
     print ("Lowest: " + str(lowest) + ", highest: " + str(highest) + ", increment: " + str(increment))
 
     x = range(0, freqs)
-    plot(x, ramp_l, 'Ramp (L)', 'frequency', 'power')
+    plot(x, ramp_l, 'Ramp (L)', 'frequency', 'power', True)
         
     return ramp_l, ramp_r
 
 
-def plot(x, y, title, x_label, y_label):
+def plot(x, y, title, x_label, y_label, force=False):
     global plot_graphs
-    if plot_graphs:
+    if plot_graphs or force:
         p = figure(title=title, x_axis_label=x_label, y_axis_label=y_label)
         p.line(x, y, legend=title, line_width=1)
         show(p)
@@ -74,12 +76,12 @@ def pan(fft_out):
     
     #Get number of frequency samples
     freqs = len(fft_out)
-    print("Frequeny samples: " + str(freqs))
+    print("Frequency samples: " + str(freqs))
     
     #Get ramp functions
     ramp_l, ramp_r = ramp(freqs, peak, 0)
     
-    #Apply ramps                        <--------------------------------- TODO
+    #Apply ramps                        <<<<---------------
     #process_out_l = ramp_l * fft_out
     #process_out_r = ramp_r * fft_out
     
@@ -92,18 +94,27 @@ def pan(fft_out):
     x = range(0, len(process_out_r))
     plot(x, np.abs(process_out_r), 'Final signal (R)', 'frequency', 'power')
         
-    final_out = np.vstack(( np.real(ifft(process_out_l)).astype('int16'), np.real(ifft(process_out_r)).astype('int16') )).transpose()
+    return process_out_l, process_out_r
+
+
+def write_wav(left, right, path):
+    print "\n==========================\n Run IFFT and write audio out \n==========================\n"
+    final_out = np.vstack(( np.real(ifft(left)).astype('int16'), np.real(ifft(right)).astype('int16') )).transpose()
+    print ("Shape of data: " + str(final_out.shape) + ", data type: " + str(final_out.dtype))
+    wav.write(path, rate, final_out)
     
-    print ("Shape of data: " + str(final_out.shape))
-    print ("Data type: " + str(final_out.dtype))
+####################################################################################################
 
-    return final_out
+def main():
 
-
-def main():    
+#Get FFT
     fft_out = getFFT('../InputSamples/16-bit/68_C_HugePad_01_539.wav')
-    final_out = pan(fft_out)
-    wav.write('../OutputSamples/68_C_HugePad_01_539.wav', rate, final_out)
+
+#Apply pan effect (mono in, stereo out)
+    process_out_l, process_out_r = pan(fft_out)
+
+#IFFT and write result
+    write_wav(process_out_l, process_out_r, '../OutputSamples/68_C_HugePad_01_539.wav')
 
 if __name__ == "__main__":
     main()
