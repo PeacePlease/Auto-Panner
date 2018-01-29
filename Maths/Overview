@@ -17,3 +17,13 @@
  c) Maybe we want to select frequency ranges and move them about the soundscape, i.e. non-ramp - possibly more esoteric. 
  d) Maybe we want to select specific voices to avoid murdering innocent acoustic instruments - possibly less esoteric (but way harder)
 3. IFT each side
+
+
+
+Effectively:
+           ___________
+__________/
+
+         / \
+ lowest f   highest f to 
+to 'ignore'      'ignore'
