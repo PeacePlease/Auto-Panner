@@ -8,6 +8,7 @@ from math import log10
 import time
 from inspect import currentframe, getframeinfo
 from re import split as rsplit
+#import sys
 
 ####################################################################################################
 
@@ -16,9 +17,9 @@ rate = 0
 
 def main():
 
-    start_time = time.time()
     global start_time
-
+    start_time = time.time()
+    
     log('Starting', currentframe())
     
 #Parameters
@@ -26,11 +27,17 @@ def main():
     outpath    = '../OutputSamples/'
     infile     = 'LeOnde.wav'
     outfile    = infile
-    startrampf = 50
-    endrampf   = 1000
+    #startrampf = 50
+    #endrampf   = 1000
+    devia      = 0.95
+    severity   = 1 #TODO
     
 #Get FFT
-    freqs, fft_out = getFFT(inpath + infile)
+    freqs, fft_out, ave_f = getFFT(inpath + infile)
+
+#Get ramp params
+    startrampf = (1-devia)*ave_f
+    endrampf   = (1+devia)*ave_f
 
 #Apply pan effect (mono in, stereo out)
     process_out_l, process_out_r = pan(freqs, fft_out, startrampf, endrampf)
@@ -45,7 +52,7 @@ def main():
 def log(text, currframe, level='INFO'):
     global start_time
     frameinfo = getframeinfo(currframe)
-    print(str(time.time() - start_time) + "\t| " + rsplit('[\\\/]', frameinfo.filename)[-1] + "\t| " +  str(frameinfo.lineno) + "\t| " + level + "\t| " + text)
+    print(str.format('{0:.10f}', time.time() - start_time) + "\t| " + rsplit('[\\\/]', frameinfo.filename)[-1] + "\t| " +  str(frameinfo.lineno) + "\t| " + level + "\t| " + text)
 
 def wall(text, currframe, level='INFO'):
     log('', currframe)
@@ -102,20 +109,39 @@ def getFFT(wav_path):
     freqs = fftfreq(data.size, float(1)/rate)
     
     plot(freqs, np.abs(fft_out), 'Original FFT', 'frequency', 'power')
-        
-    return freqs, fft_out
+
+    ave_f = np.average(np.absolute(freqs), None, np.absolute(fft_out))
+    log("Average freqency: " + str(round(ave_f, 3)), currentframe())
+    
+    return freqs, fft_out, ave_f
 
 def write_wav(left, right, path):
-    wall('Run IFFT and write audio out', currentframe())
-    final_out = np.vstack(( np.real(ifft(left)).astype('int16'), np.real(ifft(right)).astype('int16') )).transpose()
-    log("Shape of data: " + str(final_out.shape) + ", data type: " + str(final_out.dtype), currentframe())
+    #wall('Run IFFT and write audio out', currentframe())
+    #log("Running IFT...", currentframe())
+    print ("Hi Sam 1")
+    print(left)
+    print(ifft(left))
+    iftl = ifft(left)
+    print ("Hi Sam 2")
+    #log("Left side half done...", currentframe())
+    iftl = np.real(iftl).astype('int16')
+    #log("Left side done...", currentframe())
+    iftr = np.real(ifft(right)).astype('int16')
+    #log("Right side done...", currentframe())
+    
+    final_out = np.vstack(( iftl, iftr )).transpose()
+
+
+    
+    #log("Shape of data: " + str(final_out.shape) + ", data type: " + str(final_out.dtype), currentframe())
     wav.write(path, rate, final_out)
-    log("Written file to disk. Enjoy!", currentframe())
+    #log("Written " + path + ". Enjoy!", currentframe())
 
 
 def ramp(freqs, startf, endf):
 
     wall('Generating ramp function', currentframe())
+    log("Start freq: " + str(round(startf, 4)/1000) + "kHz, end freq: " + str(round(endf, 4)/1000) + "kHz", currentframe())
     
     ramp_l = np.zeros(len(freqs))
     ramp_r = np.zeros(len(freqs))
@@ -171,7 +197,12 @@ def pan(freqs, fft_out, startrampf, endrampf):
     
     plot(freqs, process_out_l, 'Final signal (L)', 'frequency', 'power')
     plot(freqs, process_out_r, 'Final signal (R)', 'frequency', 'power')
-        
+
+    ave_f_l = round(np.average(np.absolute(freqs), None, np.absolute(process_out_l)), 4)
+    ave_f_r = round(np.average(np.absolute(freqs), None, np.absolute(process_out_r)), 4)
+    log("Leftside average freqency: " + str(ave_f_l) + "Hz, rightside: " + str(ave_f_r) + "Hz", currentframe())
+    log("Average frequency (assuming same power): " + str(round((ave_f_l + ave_f_r)/2, 3)) + "Hz", currentframe())
+            
     return process_out_l, process_out_r
 
     
